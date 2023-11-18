@@ -1,0 +1,274 @@
+--PES1UG20CS410
+--Shreyash Chatterjee
+--Section G
+--Roll No. 1
+
+--DDL Commands 
+create table USER(
+	user_id varchar(255) PRIMARY KEY,
+	mobile int(10),
+	email varchar(255),
+	address varchar(255),
+	password varchar(255),
+	permissions varchar(255),
+	name varchar(255)
+);
+
+create table RESTAURANT(
+	franchise_id int(10) PRIMARY KEY,
+	franchise_name varchar(255)
+);
+
+create table ORDERS(
+	order_id int(10) PRIMARY KEY,
+	total_amount int(10),
+	user_id varchar(255),
+	franchise_id int(10),
+	offer_id int (10),
+	discount int(10) default 0,
+	final_price int(10) default 0,
+	date varchar(255), 
+	FOREIGN KEY (user_id) REFERENCES USER(user_id),
+	FOREIGN KEY (franchise_id) REFERENCES RESTAURANT(franchise_id),
+	FOREIGN KEY (offer_id) REFERENCES OFFER(offer_id)
+);
+
+create table PAYMENT_INFO(
+	payment_id int(10) PRIMARY KEY,
+	order_id int(10) UNIQUE,
+	bank varchar(255),
+	user_id varchar(255),
+	card_no varchar(16),
+	FOREIGN KEY (user_id) REFERENCES USER(user_id),
+	FOREIGN KEY (order_id) REFERENCES ORDERS(order_id)
+);
+
+create table FOOD_ITEM(
+	food_id int(10),
+	food_description varchar(255),
+	food_name varchar(255),
+	franchise_id int(10),
+	availability varchar(255),
+	price int(10),
+	FOREIGN KEY (franchise_id) REFERENCES RESTAURANT(franchise_id),
+	PRIMARY KEY (food_id, franchise_id)
+);
+
+create table BRANCH(
+	branch_id int(10),
+	franchise_id int(10),
+	address varchar(255),
+	contact varchar(10),
+	PRIMARY KEY(branch_id, franchise_id),
+	FOREIGN KEY (franchise_id) references RESTAURANT(franchise_id)
+);
+
+create table ORDER_AND_FOOD_ITEM(
+	order_id int(10),
+	food_id int(10),
+	franchise_id int(10),
+	quantity int(10),
+	total_item_price int(10),
+	FOREIGN KEY (order_id) references ORDERS(order_id),
+	FOREIGN KEY (food_id) references FOOD_ITEM(food_id),
+	FOREIGN KEY (franchise_id) references RESTAURANT(franchise_id),
+	PRIMARY KEY (order_id, food_id, franchise_id)
+);
+
+create table OFFER(
+	offer_id int(10) PRIMARY KEY,
+	offer_name varchar(255),
+	percent float,
+	max_discount int(10)
+);
+
+create table USER_AND_OFFER(
+	user_id varchar(255),
+	offer_id int(10),
+	PRIMARY KEY (user_id, offer_id),
+	FOREIGN KEY (user_id) references USER(user_id),
+	FOREIGN KEY (offer_id) references OFFER(offer_id)
+);
+
+create table DELIVERY_AGENT(
+	agent_id int(10),
+	user_id varchar(255) UNIQUE,
+	available int(10) default 1,
+	PRIMARY KEY (agent_id),
+	FOREIGN KEY (user_id) references user(user_id)
+);
+
+create table ORDER_AND_DELIVERY_AGENT(
+	order_id int(10),
+	agent_id int(10),
+	delivered int(10) default 0,
+	PRIMARY KEY (order_id, agent_id), 
+	FOREIGN KEY (agent_id) references DELIVERY_AGENT(agent_id),
+	FOREIGN KEY (order_id) references ORDERS(order_id)
+);
+
+
+--Most of the populating commands were done through either importing excel files or from the front end created, but these are some of the insert commands done on the terminal 
+
+insert into order_and_food_item (order_id, food_id, franchise_id, quantity) values (100, 1, 2, 3);
+
+insert into order_and_food_item (order_id, food_id, franchise_id, quantity) values (100, 2, 2, 2);
+
+insert into order_and_food_item (order_id, food_id, franchise_id, quantity) values (100, 3, 2, 1);
+
+insert into order_and_food_item (order_id, food_id, franchise_id, quantity) values (101, 3, 4, 2);
+
+insert into order_and_food_item (order_id, food_id, franchise_id, quantity) values (101, 1, 4, 1);
+
+insert into order_and_food_item (order_id, food_id, franchise_id, quantity) values (102, 2, 9, 2);
+
+insert into order_and_food_item (order_id, food_id, franchise_id, quantity) values (103, 4, 7, 1);
+
+insert into order_and_food_item (order_id, food_id, franchise_id, quantity) values (103, 5, 7, 2);
+
+--The following are the Join Queries 
+
+--Find out all the food items every delivery agent has ever delivered along with their agent_id
+
+select d.agent_id, f.food_name from food_item f, order_and_food_item o, order_and_delivery_agent d where o.franchise_id = f.franchise_id and o.food_id = f.food_id and o.order_id = d.order_id;
+
+--Find all the order_id’s which have Diwali Bonanza as their offers added
+
+select order_id from orders natural join offer where offer_name = 'Diwali Bonanza';
+
+--Find all the restaurant names from which the user Claude Monet has placed order or is ordering-
+
+select franchise_name from restaurant where franchise_id in (select franchise_id from restaurant natural join orders where user_id = 'Claude Monet');
+--Find all the names of the food_items the user George Washington has ever ordered
+
+select food_name from order_and_food_item natural join food_item where order_id in (select order_id from orders where user_id = 'George Washington' );
+
+--Aggregate Queries 
+
+--Find the count of all the orders which has been placed from KFC
+
+select count(*) from orders where franchise_id = (select franchise_id from restaurant where franchise_name = 'KFC');
+
+--Find the user who has ordered or is ordering the most expensive meal
+
+select user_id from orders where final_price = (select max(final_price) from orders);
+
+--Find the user who has ordered or ordering the cheapest meal
+
+select user_id from orders where final_price = (select min(final_price) from orders);
+
+--Find the count every food item every ordered - 
+
+select food_name, franchise_id, count(*) as Count from order_and_food_item natural join food_item group by franchise_id, food_id;
+
+
+
+
+--Set Queries
+
+--Find all the users who have bought Classic Zinger Burger and also have paid for their order 
+
+select user_id from payment_info where order_id = ((select order_id from payment_info) intersect (select order_id from order_and_food_item where food_id = 1 and franchise_id = 1));
+
+--Find all the users who have bought the first item from franchise 1 or franchise 5
+
+select user_id from orders where order_id in ((select order_id from order_and_food_item where food_id = 1 and franchise_id = 1) union (select order_id  from order_and_food_item where food_id = 1 and franchise_id = 5));
+
+--Find all the users who have bought an item with quantity 2 or with 3
+
+select distinct user_id from orders where order_id in((select order_id from order_and_food_item where quantity = 2) union all (select order_id from order_and_food_item  where quantity = 3));
+
+--select distinct user_id from orders where order_id in ((select order_id from order_and_food_item where franchise_id = 1 or franchise_id = 2 and order_id in (select order_id from payment_info)) except (select order_id from payment_info where bank = 'ICICI'));
+
+
+
+--Following is the function
+
+--To find the discount on the food items the user is planning to purchase. This is used inside a trigger, which is invoked when a food_item is added or deleted.
+
+delimiter $$
+create function calculate_discount(max_discount int, percent float, total_amount int)
+returns int
+deterministic
+begin
+    declare new_discount int;
+    if (total_amount * percent) > max_discount
+	then
+	set new_discount = max_discount;
+	else
+	set new_discount = total_amount * percent;
+	end if;
+    
+    return new_discount;
+end $$
+delimiter ;
+
+
+--Following is the procedure
+--Procedure for food_delivery which sets the delivered attribute of order_and_food_delivery to 1 and makes the current deliver_agent available again to take more orders.
+
+delimiter $$
+create procedure food_delivered(in cur_order_id int, in cur_agent_id int)
+begin
+	update order_and_delivery_agent set delivered = 1 where order_id = cur_order_id and agent_id = cur_agent_id;
+	update delivery_agent set available = 1 where agent_id = cur_agent_id;
+end $$
+delimiter;
+
+
+--Following is the trigger
+--Adds total if payment has not been done yet and also calculates item_total and also checks if the order has already been paid for, also checks if the restaurant from which the food is being ordered from is same as the original order_id
+
+delimiter $$
+create trigger add_food
+before insert
+on
+order_and_food_item
+for each row begin
+set @actual_franchise = (select franchise_id from orders where order_id = new.order_id);
+if(@actual_franchise <> new.franchise_id)
+then
+signal sqlstate '45000'
+set message_text="This order is not from this franchise...";
+end if;
+
+
+set @pri = (select price from food_item where food_id = new.food_id and franchise_id = new.franchise_id);
+set new.total_item_price = @pri * new.quantity;
+if not exists (select * from payment_info where order_id = new.order_id)
+then
+update orders set total_amount = total_amount + new.total_item_price
+where order_id = new.order_id;
+
+else
+signal sqlstate '45000'
+set message_text="Cannot add food to an order which has been completed and paid for...";
+end if;
+END $$
+delimiter ;
+
+--Following is the cursor
+--The following cursors gets the user_id and names of those users who have applied for the post of delivery_agent but have not yet been assigned an agent_id by the admins - 
+
+delimiter $$
+create procedure unassigned_delivery_agents()
+begin
+    declare done int default 0;
+    declare usr varchar(255);
+    declare nam varchar(255);
+    declare cur cursor for select user_id, name from user where permissions = 'delivery_agent';
+    declare continue handler for not found set done = 1;
+    open cur;
+    label:
+        loop
+            fetch cur into usr, nam;
+            if done = 1 then leave label;
+            end if;
+            if not exists(select * from delivery_agent where user_id = usr)
+            then
+            select usr as User_ID, nam as User_Name;
+            end if;
+        end loop;
+    close cur;
+end $$
+delimiter ;
